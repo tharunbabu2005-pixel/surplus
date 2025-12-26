@@ -7,8 +7,9 @@ function Register() {
     name: '',
     email: '',
     password: '',
-    address: '', // Keeping your address field
-    role: 'student'
+    address: '', 
+    role: 'student',
+    certificateId: '' // Added for Quality Certificate
   });
   const navigate = useNavigate();
 
@@ -29,13 +30,13 @@ function Register() {
 
   return (
     <div style={{ 
-      width: '100vw',               // Full Width
-      height: '100vh',              // Full Height
-      display: 'flex',              // Flexbox for centering
-      justifyContent: 'center',     // Center Left/Right
-      alignItems: 'center',         // Center Up/Down
+      width: '100vw',               
+      height: '100vh',              
+      display: 'flex',              
+      justifyContent: 'center',     
+      alignItems: 'center',         
       backgroundColor: '#f4f4f4',
-      position: 'absolute',         // Force top layer
+      position: 'absolute',         
       top: 0,
       left: 0
     }}>
@@ -80,6 +81,7 @@ function Register() {
             <input 
               name="address" 
               placeholder="Address (e.g. Block A, Shop 4)" 
+              value={formData.address}
               onChange={handleChange} 
               required 
               style={{ padding: '12px', borderRadius: '8px', border: '1px solid #ddd' }} 
@@ -87,11 +89,29 @@ function Register() {
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                 <label style={{ fontWeight: 'bold', color: '#333' }}>I am a:</label>
-                <select name="role" onChange={handleChange} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #ddd', backgroundColor: 'white' }}>
-                    <option value="student">Buyer (Student/User)</option>
-                    <option value="restaurant">Seller (Restaurant/Shop)</option>
+                <select 
+                    name="role" 
+                    value={formData.role} 
+                    onChange={handleChange} 
+                    style={{ padding: '12px', borderRadius: '8px', border: '1px solid #ddd', backgroundColor: 'white' }}
+                >
+                    <option value="student">Student</option>
+                    <option value="restaurant">Restaurant (Quality Certified)</option>
+                    <option value="vendor">Street Food Vendor (No Cert)</option>
                 </select>
             </div>
+
+            {/* CONDITIONAL INPUT: Show Certificate ID only for Restaurants */}
+            {formData.role === 'restaurant' && (
+              <input 
+                name="certificateId" 
+                placeholder="Enter FSSAI / Quality Certificate ID" 
+                onChange={handleChange} 
+                required 
+                style={{ padding: '12px', borderRadius: '8px', border: '1px solid #ddd', backgroundColor: '#e8f5e9' }} 
+              />
+            )}
+
         </div>
 
         <button type="submit" style={{ marginTop: '20px', width: '100%', padding: '12px', backgroundColor: '#2e7d32', color: 'white', fontSize: '1.1rem', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>

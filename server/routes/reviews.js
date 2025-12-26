@@ -1,27 +1,24 @@
 const express = require('express');
-const router = express.Router();
-const Review = require('../models/Review');
+const router = require('express').Router();
+const Review = require('../models/Review'); // Ensure you have a Review model
 
-// 1. Add a Review
+// 1. ADD REVIEW
 router.post('/add', async (req, res) => {
   try {
-    const { studentId, restaurantId, orderId, rating, comment } = req.body;
-    
-    // Create new review
-    const newReview = new Review({ studentId, restaurantId, orderId, rating, comment });
+    const { studentId, restaurantId, rating, comment } = req.body;
+    const newReview = new Review({ studentId, restaurantId, rating, comment });
     await newReview.save();
-    
-    res.status(201).json({ message: "Review added successfully!" });
+    res.status(201).json(newReview);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 2. Get Reviews for a Restaurant
-router.get('/:restaurantId', async (req, res) => {
+// 2. GET REVIEWS FOR A VENDOR/RESTAURANT
+router.get('/:id', async (req, res) => {
   try {
-    const reviews = await Review.find({ restaurantId: req.params.restaurantId })
-      .populate('studentId', 'name'); // Show who wrote it
+    const reviews = await Review.find({ restaurantId: req.params.id })
+      .populate('studentId', 'name');
     res.json(reviews);
   } catch (err) {
     res.status(500).json({ error: err.message });

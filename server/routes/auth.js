@@ -1,60 +1,67 @@
-const express = require('express');
-const router = express.Router();
-const User = require('../models/User'); 
-// We are removing 'passport' if you used it before, 
-// for now let's keep it simple with manual auth or just simple login
+const router = require('express').Router();
+const User = require('../models/User');
+// const bcrypt = require('bcrypt'); // Commented out to avoid errors if not installed
 
-// 1. REGISTER ROUTE (JSON)
-// REGISTER
+// 1. REGISTER
 router.post('/register', async (req, res) => {
   try {
-    // 1. We must read 'address' from the request body
-    const { name, email, password, role, address } = req.body; 
+    const { name, email, password, role, address, certificateId } = req.body;
 
-    // 2. Check if user exists
+    // Check if user exists
     const user = await User.findOne({ email });
     if (user) return res.status(400).json({ error: "User already exists" });
 
-    // 3. Create the new user INCLUDING the address
+    // Create New User
+    // NOTE: We are saving password as plain text for simplicity. 
+    // If you use bcrypt, uncomment the hashing lines.
     const newUser = new User({
       name,
       email,
-      password,
-      role,
-      address: address || "" // Save the address (or empty if none provided)
+      password, // Store password directly
+      role: role || 'student', // Default to student
+      address: address || "",
+      certificateId: (role === 'restaurant') ? certificateId : "" 
     });
 
     await newUser.save();
     res.status(201).json({ message: "User registered successfully" });
   } catch (err) {
+    console.error("Register Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// 2. LOGIN ROUTE (JSON)
-// POST /api/auth/login
+// 2. LOGIN
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // 1. Find user
+    // Check if user exists
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ error: "User not found" });
 
-    // 2. Check password (In a real app, use bcrypt.compare)
+    // Validate Password (Plain Text Comparison)
+    // If you were using bcrypt: const validPass = await bcrypt.compare(password, user.password);
     if (user.password !== password) {
-      return res.status(400).json({ error: "Invalid credentials" });
+      return res.status(400).json({ error: "Invalid password" });
     }
 
-    // 3. SEND THE ROLE BACK! (This is the critical fix)
-    res.json({ 
-      message: "Login successful", 
-      userId: user._id, 
-      userType: user.role // <--- This must match the field name in your Database!
+    // Return User Info (simulating a token)
+    // In a real app, use jwt.sign() here. 
+    // We send back the role so the frontend knows where to redirect.
+    res.json({
+      token: "fake-jwt-token-" + user._id, 
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role // THIS IS IMPORTANT FOR REDIRECT
+      }
     });
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Login Error:", err); // This prints the error in your VS Code Terminal
+    res.status(500).json({ error: "Server Error: " + err.message });
   }
 });
 

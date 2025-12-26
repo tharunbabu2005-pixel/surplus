@@ -3,7 +3,10 @@ import axios from 'axios';
 
 function MyOrders() {
   const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+  
+  // Review State
+  const [reviewOpen, setReviewOpen] = useState(null); // Stores the order ID being reviewed
+  const [reviewData, setReviewData] = useState({ rating: 5, comment: '' });
 
   useEffect(() => {
     fetchOrders();
@@ -11,68 +14,72 @@ function MyOrders() {
 
   const fetchOrders = async () => {
     const studentId = localStorage.getItem('userId');
-    if (!studentId) {
-        alert("Please login to view orders.");
-        setLoading(false);
-        return;
-    }
+    if (!studentId) return;
+    const res = await axios.get(`http://localhost:5000/api/orders/student/${studentId}`);
+    setOrders(res.data.reverse());
+  };
 
+  const submitReview = async (restaurantId) => {
+    const studentId = localStorage.getItem('userId');
     try {
-      // 1. Fetch orders from backend
-      const res = await axios.get(`http://localhost:5000/api/orders/student/${studentId}`);
-      // 2. Reverse array to show Newest First
-      setOrders(res.data.reverse());
-      setLoading(false);
+        await axios.post('http://localhost:5000/api/reviews/add', {
+            studentId,
+            restaurantId,
+            rating: reviewData.rating,
+            comment: reviewData.comment
+        });
+        alert("Review Submitted! ⭐");
+        setReviewOpen(null); // Close box
     } catch (err) {
-      console.error("Error fetching orders", err);
-      setLoading(false);
+        alert("Error submitting review");
     }
   };
 
   return (
     <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
-      <h1>My Order History 🧾</h1>
-      
-      {loading ? (
-        <p>Loading orders...</p>
-      ) : orders.length === 0 ? (
-        <div style={{ textAlign: 'center', color: 'gray', marginTop: '50px' }}>
-            <h3>No orders yet. 🤷‍♂️</h3>
-            <p>Go to the Home page and grab some food!</p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            {orders.map(order => (
-                <div key={order._id} style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', backgroundColor: 'white', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
-                    
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                        {/* Show Saved Title OR Fallback to Listing Title OR "Unknown" */}
-                        <h3 style={{ margin: 0 }}>
-                            {order.itemTitle || order.listingId?.title || "Unknown Item"}
-                        </h3>
-                        
-                        <span style={{ 
-                            padding: '6px 12px', 
-                            borderRadius: '20px', 
-                            fontSize: '0.85em',
-                            fontWeight: 'bold',
-                            backgroundColor: order.status === 'picked up' ? '#c8e6c9' : '#fff9c4',
-                            color: order.status === 'picked up' ? 'green' : '#f9a825'
-                        }}>
-                            {order.status.toUpperCase()}
-                        </span>
-                    </div>
+      <h1>My Orders 🧾</h1>
+      {orders.map(order => (
+        <div key={order._id} style={{ border: '1px solid #ddd', padding: '20px', marginBottom: '15px', borderRadius: '8px' }}>
+            <h3>{order.itemTitle}</h3>
+            <p>Status: <strong>{order.status}</strong></p>
+            
+            {/* REVIEW BUTTON - Only show if order is "picked up" */}
+            {order.status === 'picked up' && (
+                <button 
+                    onClick={() => setReviewOpen(order._id)}
+                    style={{ backgroundColor: '#ff9800', color: 'white', border: 'none', padding: '5px 10px', cursor: 'pointer' }}
+                >
+                    Write a Review ✍️
+                </button>
+            )}
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#555' }}>
-                        <span>💰 Paid: <strong>₹{order.totalPrice}</strong></span>
-                        <span>📅 {new Date(order.createdAt).toLocaleDateString()}</span>
-                    </div>
-
-                    <p style={{ color: '#999', fontSize: '0.8em', marginTop: '10px' }}>Order ID: {order._id}</p>
+            {/* REVIEW FORM (Shows only when button is clicked) */}
+            {reviewOpen === order._id && (
+                <div style={{ marginTop: '10px', padding: '10px', background: '#f9f9f9' }}>
+                    <label>Rating: </label>
+                    <select 
+                        value={reviewData.rating} 
+                        onChange={(e) => setReviewData({...reviewData, rating: e.target.value})}
+                    >
+                        <option value="5">5 ⭐</option>
+                        <option value="4">4 ⭐</option>
+                        <option value="3">3 ⭐</option>
+                        <option value="2">2 ⭐</option>
+                        <option value="1">1 ⭐</option>
+                    </select>
+                    <br />
+                    <input 
+                        placeholder="Write a comment..." 
+                        value={reviewData.comment}
+                        onChange={(e) => setReviewData({...reviewData, comment: e.target.value})}
+                        style={{ width: '80%', padding: '5px', marginTop: '5px' }}
+                    />
+                    <button onClick={() => submitReview(order.restaurantId._id)} style={{ marginLeft: '10px', background: 'green', color: 'white' }}>Submit</button>
+                    <button onClick={() => setReviewOpen(null)} style={{ marginLeft: '5px' }}>Cancel</button>
                 </div>
-            ))}
+            )}
         </div>
-      )}
+      ))}
     </div>
   );
 }

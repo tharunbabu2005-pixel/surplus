@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom'; // IMPORTED useNavigate
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 
@@ -9,6 +10,7 @@ function RestaurantAnalytics() {
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [topItems, setTopItems] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const navigate = useNavigate(); // INITIALIZE navigate
 
   useEffect(() => {
     const fetchData = async () => {
@@ -69,12 +71,20 @@ function RestaurantAnalytics() {
 
   return (
     <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+      
+      {/* --- ADDED BACK BUTTON HERE --- */}
+      <button 
+        onClick={() => navigate('/dashboard')} 
+        style={{ marginBottom: '20px', padding: '10px 15px', background: '#333', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+      >
+        ← Back to Dashboard
+      </button>
+
       <h1>Analytics Dashboard 📊</h1>
       
       {/* Revenue Card */}
       <div style={{ backgroundColor: '#4caf50', color: 'white', padding: '20px', borderRadius: '10px', marginBottom: '30px', textAlign: 'center' }}>
         <h2>Total Revenue</h2>
-        {/* CHANGED HERE */}
         <p style={{ fontSize: '2.5rem', fontWeight: 'bold', margin: 0 }}>₹{totalRevenue}</p>
       </div>
 
