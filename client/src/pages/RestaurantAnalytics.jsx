@@ -1,42 +1,44 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { Bar } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 function RestaurantAnalytics() {
-  const [reviews, setReviews] = useState([]);
+  const [totalRevenue, setTotalRevenue] = useState(0);
   const [topItems, setTopItems] = useState([]);
-  const navigate = useNavigate();
-  const restaurantId = localStorage.getItem('userId');
+  const [reviews, setReviews] = useState([]);
 
   useEffect(() => {
-    if (!restaurantId) return navigate('/login');
-
     const fetchData = async () => {
-      try {
-        // 1. Fetch Reviews
-        const resReviews = await axios.get(`http://localhost:5000/api/reviews/${restaurantId}`);
-        setReviews(resReviews.data);
+        const restaurantId = localStorage.getItem('userId');
+        try {
+            const orderRes = await axios.get(`http://localhost:5000/api/orders/restaurant/${restaurantId}`);
+            const orders = orderRes.data;
+            
+            // 1. Calculate Revenue
+            const revenue = orders.reduce((sum, order) => sum + order.totalPrice, 0);
+            setTotalRevenue(revenue);
 
-        // 2. Fetch Orders to calculate "Top Sales"
-        const resOrders = await axios.get(`http://localhost:5000/api/orders/restaurant/${restaurantId}`);
-        calculateTopSales(resOrders.data);
+            // 2. Calculate Top Sales
+            calculateTopSales(orders);
 
-      } catch (err) {
-        console.error("Error fetching analytics:", err);
-      }
+            // 3. Fetch Reviews
+            const reviewRes = await axios.get(`http://localhost:5000/api/reviews/${restaurantId}`);
+            setReviews(reviewRes.data);
+
+        } catch (err) {
+            console.error("Error loading analytics", err);
+        }
     };
     fetchData();
-  }, [navigate, restaurantId]);
+  }, []);
 
-  // --- LOGIC TO FIND TOP SELLING ITEMS ---
   const calculateTopSales = (orders) => {
     const salesMap = {};
-
-    // Inside calculateTopSales function...
-  orders.forEach(order => {
-      // Logic: Try to get name from Listing (if alive), OR use the saved 'itemTitle' (if deleted)
+    orders.forEach(order => {
       const title = order.listingId?.title || order.itemTitle || "Deleted Item";
-      
       if (salesMap[title]) {
         salesMap[title] += 1;
       } else {
@@ -44,69 +46,59 @@ function RestaurantAnalytics() {
       }
     });
 
-    // Convert to array and sort by highest count
-    const sortedSales = Object.entries(salesMap)
-      .map(([title, count]) => ({ title, count }))
-      .sort((a, b) => b.count - a.count) // Sort High to Low
-      .slice(0, 5); // Take only Top 5
+    // Convert map to array and sort
+    const sortedItems = Object.keys(salesMap)
+      .map(key => ({ title: key, count: salesMap[key] }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5); // Top 5
 
-    setTopItems(sortedSales);
+    setTopItems(sortedItems);
+  };
+
+  // Chart Data Preparation
+  const chartData = {
+    labels: topItems.map(item => item.title),
+    datasets: [
+      {
+        label: 'Units Sold',
+        data: topItems.map(item => item.count),
+        backgroundColor: 'rgba(53, 162, 235, 0.5)',
+      },
+    ],
   };
 
   return (
     <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+      <h1>Analytics Dashboard 📊</h1>
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-        <h1>Business Analytics 📈</h1>
-        <button onClick={() => navigate('/dashboard')} style={{ backgroundColor: '#333', color: 'white' }}>Back to Dashboard</button>
+      {/* Revenue Card */}
+      <div style={{ backgroundColor: '#4caf50', color: 'white', padding: '20px', borderRadius: '10px', marginBottom: '30px', textAlign: 'center' }}>
+        <h2>Total Revenue</h2>
+        {/* CHANGED HERE */}
+        <p style={{ fontSize: '2.5rem', fontWeight: 'bold', margin: 0 }}>₹{totalRevenue}</p>
       </div>
 
-      {/* --- SECTION 1: TOP SALES --- */}
-      <div style={{ marginBottom: '40px' }}>
-        <h2>🏆 Top Selling Items</h2>
-        {topItems.length === 0 ? (
-          <p style={{ color: 'gray' }}>No sales data yet.</p>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px' }}>
-            {topItems.map((item, index) => (
-              <div key={index} style={{ 
-                backgroundColor: 'white', padding: '15px', borderRadius: '8px', 
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'space-between' 
-              }}>
-                <span style={{ fontWeight: 'bold', fontSize: '1.1em' }}>#{index + 1} {item.title}</span>
-                <span style={{ color: 'green', fontWeight: 'bold' }}>{item.count} Sold</span>
-              </div>
-            ))}
-          </div>
-        )}
+      {/* Chart Section */}
+      <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', marginBottom: '30px', border: '1px solid #ddd' }}>
+        <h3>🏆 Top Selling Items</h3>
+        {topItems.length > 0 ? <Bar data={chartData} /> : <p>No sales data yet.</p>}
       </div>
 
-      {/* --- SECTION 2: REVIEWS --- */}
-      <div>
-        <h2>⭐ Customer Reviews</h2>
-        {reviews.length === 0 ? (
-          <p style={{ color: 'gray' }}>No reviews yet.</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            {reviews.map((rev) => (
-              <div key={rev._id} style={{ 
-                backgroundColor: 'white', padding: '20px', borderRadius: '10px', 
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)', borderLeft: '5px solid orange'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                  <strong>{rev.studentId?.name || "Anonymous"}</strong>
-                  <span style={{ color: '#666', fontSize: '0.9em' }}>{new Date(rev.createdAt).toLocaleDateString()}</span>
-                </div>
-                
-                {/* Star Rating Display */}
-                <div style={{ color: 'gold', fontSize: '1.2em', marginBottom: '5px' }}>
-                  {"★".repeat(rev.rating)}{"☆".repeat(5 - rev.rating)}
-                </div>
-                
-                <p style={{ margin: 0, fontStyle: 'italic', color: '#333' }}>"{rev.comment}"</p>
-              </div>
-            ))}
-          </div>
+      {/* Reviews Section */}
+      <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', border: '1px solid #ddd' }}>
+        <h3>⭐ Recent Reviews</h3>
+        {reviews.length === 0 ? <p>No reviews yet.</p> : (
+            <div>
+                {reviews.map(review => (
+                    <div key={review._id} style={{ borderBottom: '1px solid #eee', padding: '10px 0' }}>
+                        <strong style={{ fontSize: '1.2rem', color: '#ff9800' }}>
+                            {"★".repeat(review.rating)}
+                        </strong>
+                        <p style={{ margin: '5px 0' }}>"{review.comment}"</p>
+                        <small style={{ color: 'gray' }}>- {review.studentId?.name || "Anonymous"}</small>
+                    </div>
+                ))}
+            </div>
         )}
       </div>
 

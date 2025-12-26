@@ -1,91 +1,64 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
 
 function RestaurantOrders() {
   const [orders, setOrders] = useState([]);
-  const navigate = useNavigate();
 
-  // Fetch Orders
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
   const fetchOrders = async () => {
     const restaurantId = localStorage.getItem('userId');
-    if (!restaurantId) return navigate('/login');
-
     try {
       const res = await axios.get(`http://localhost:5000/api/orders/restaurant/${restaurantId}`);
       setOrders(res.data);
     } catch (err) {
-      console.error("Error fetching sales:", err);
+      console.error("Error loading orders", err);
     }
   };
 
-  useEffect(() => {
-    fetchOrders();
-  }, [navigate]);
-
-  // NEW: Function to mark order as picked up
-  const handleStatusUpdate = async (orderId) => {
+  const updateStatus = async (orderId, newStatus) => {
     try {
-      await axios.put(`http://localhost:5000/api/orders/status/${orderId}`, {
-        status: 'picked up'
-      });
-      alert("Order completed!");
-      fetchOrders(); // Refresh the list to see the change
+        await axios.put('http://localhost:5000/api/orders/update-status', { orderId, status: newStatus });
+        fetchOrders(); // Refresh list
     } catch (err) {
-      alert("Error updating status");
+        alert("Error updating status");
     }
   };
 
   return (
-    <div style={{ padding: '20px', color: 'black', minHeight: '100vh', backgroundColor: 'white' }}> 
-      <h1>Incoming Orders 🛍️</h1>
-      <button 
-        onClick={() => navigate('/dashboard')} 
-        style={{ marginBottom: '20px', padding: '10px', backgroundColor: '#333', color: 'white' }}
-      >
-        Back to Dashboard
-      </button>
+    <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+      <h1>Incoming Orders 📦</h1>
+      {orders.length === 0 ? <p>No orders yet.</p> : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            {orders.map(order => (
+                <div key={order._id} style={{ border: '1px solid #ccc', padding: '20px', borderRadius: '8px', backgroundColor: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    
+                    <div>
+                        <h3>{order.itemTitle || order.listingId?.title || "Deleted Item"}</h3>
+                        <p>Customer: {order.studentId?.name || "Unknown Student"}</p>
+                        {/* CHANGED HERE */}
+                        <p style={{ fontWeight: 'bold', color: 'green' }}>Earnings: ₹{order.totalPrice}</p>
+                        <p style={{ fontSize: '0.8em', color: 'gray' }}>Status: {order.status}</p>
+                    </div>
 
-      {orders.length === 0 ? (
-        <p>No orders yet.</p>
-      ) : (
-        <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: 'white' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#f2f2f2', textAlign: 'left' }}>
-              <th>Item</th>
-              <th>Customer</th>
-              <th>Status</th>
-              <th>Action</th> {/* New Column */}
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map((order) => (
-              <tr key={order._id}>
-                <td>{order.listingId?.title}</td>
-                <td>{order.studentId?.name}</td>
-                <td>
-                  <span style={{ 
-                    color: order.status === 'picked up' ? 'gray' : 'green', 
-                    fontWeight: 'bold' 
-                  }}>
-                    {order.status.toUpperCase()}
-                  </span>
-                </td>
-                <td>
-                  {/* Only show button if order is NOT picked up yet */}
-                  {order.status !== 'picked up' && (
-                    <button 
-                      onClick={() => handleStatusUpdate(order._id)}
-                      style={{ padding: '5px 10px', backgroundColor: 'green', color: 'white', cursor: 'pointer' }}
-                    >
-                      Mark Picked Up
-                    </button>
-                  )}
-                </td>
-              </tr>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        {order.status !== 'picked up' && (
+                            <button onClick={() => updateStatus(order._id, 'picked up')} style={{ backgroundColor: '#4caf50', color: 'white', padding: '8px' }}>
+                                Mark as Picked Up
+                            </button>
+                        )}
+                        {order.status !== 'cancelled' && order.status !== 'picked up' && (
+                            <button onClick={() => updateStatus(order._id, 'cancelled')} style={{ backgroundColor: '#f44336', color: 'white', padding: '8px' }}>
+                                Cancel Order
+                            </button>
+                        )}
+                    </div>
+
+                </div>
             ))}
-          </tbody>
-        </table>
+        </div>
       )}
     </div>
   );

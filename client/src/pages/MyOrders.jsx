@@ -1,123 +1,78 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
 
 function MyOrders() {
   const [orders, setOrders] = useState([]);
-  const navigate = useNavigate();
-  const userId = localStorage.getItem('userId');
-
-  // State for the Review Popup
-  const [showRateModal, setShowRateModal] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [rating, setRating] = useState(5);
-  const [comment, setComment] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      if (!userId) return navigate('/login');
-      try {
-        const res = await axios.get(`http://localhost:5000/api/orders/user/${userId}`);
-        setOrders(res.data);
-      } catch (err) {
-        console.error("Error fetching orders:", err);
-      }
-    };
     fetchOrders();
-  }, [navigate, userId]);
+  }, []);
 
-  const openRateModal = (order) => {
-    setSelectedOrder(order);
-    setShowRateModal(true);
-  };
+  const fetchOrders = async () => {
+    const studentId = localStorage.getItem('userId');
+    if (!studentId) {
+        alert("Please login to view orders.");
+        setLoading(false);
+        return;
+    }
 
-  const submitReview = async () => {
     try {
-      await axios.post('http://localhost:5000/api/reviews/add', {
-        studentId: userId,
-        restaurantId: selectedOrder.restaurantId._id,
-        orderId: selectedOrder._id,
-        rating,
-        comment
-      });
-      alert("Review Submitted! ⭐");
-      setShowRateModal(false);
-      setComment('');
+      // 1. Fetch orders from backend
+      const res = await axios.get(`http://localhost:5000/api/orders/student/${studentId}`);
+      // 2. Reverse array to show Newest First
+      setOrders(res.data.reverse());
+      setLoading(false);
     } catch (err) {
-      alert("Error submitting review: " + err.message);
+      console.error("Error fetching orders", err);
+      setLoading(false);
     }
   };
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h1>My Orders 📦</h1>
-      <button onClick={() => navigate('/home')} style={{ marginBottom: '20px', padding: '10px' }}>Back to Home</button>
-
-      {orders.length === 0 ? (
-        <p>You haven't ordered anything yet.</p>
+    <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+      <h1>My Order History 🧾</h1>
+      
+      {loading ? (
+        <p>Loading orders...</p>
+      ) : orders.length === 0 ? (
+        <div style={{ textAlign: 'center', color: 'gray', marginTop: '50px' }}>
+            <h3>No orders yet. 🤷‍♂️</h3>
+            <p>Go to the Home page and grab some food!</p>
+        </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          {orders.map((order) => (
-            <div key={order._id} style={{ 
-              border: '1px solid #ccc', padding: '20px', borderRadius: '8px', maxWidth: '600px',
-              backgroundColor: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-            }}>
-              <div>
-                <h3>{order.listingId?.title || "Item Unavailable"}</h3>
-                <p><strong>Restaurant:</strong> {order.restaurantId?.name || "Unknown"}</p>
-                <p><strong>Price:</strong> ${order.totalPrice}</p>
-                <p><strong>Status:</strong> <span style={{ color: 'green', fontWeight: 'bold' }}>{order.status}</span></p>
-              </div>
+            {orders.map(order => (
+                <div key={order._id} style={{ border: '1px solid #ddd', padding: '20px', borderRadius: '8px', backgroundColor: 'white', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        {/* Show Saved Title OR Fallback to Listing Title OR "Unknown" */}
+                        <h3 style={{ margin: 0 }}>
+                            {order.itemTitle || order.listingId?.title || "Unknown Item"}
+                        </h3>
+                        
+                        <span style={{ 
+                            padding: '6px 12px', 
+                            borderRadius: '20px', 
+                            fontSize: '0.85em',
+                            fontWeight: 'bold',
+                            backgroundColor: order.status === 'picked up' ? '#c8e6c9' : '#fff9c4',
+                            color: order.status === 'picked up' ? 'green' : '#f9a825'
+                        }}>
+                            {order.status.toUpperCase()}
+                        </span>
+                    </div>
 
-              {/* RATE BUTTON */}
-              <button 
-                onClick={() => openRateModal(order)}
-                style={{ backgroundColor: '#ffc107', color: 'black', fontWeight: 'bold' }}
-              >
-                Rate ⭐
-              </button>
-            </div>
-          ))}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#555' }}>
+                        <span>💰 Paid: <strong>₹{order.totalPrice}</strong></span>
+                        <span>📅 {new Date(order.createdAt).toLocaleDateString()}</span>
+                    </div>
+
+                    <p style={{ color: '#999', fontSize: '0.8em', marginTop: '10px' }}>Order ID: {order._id}</p>
+                </div>
+            ))}
         </div>
       )}
-
-      {/* --- REVIEW POPUP MODAL --- */}
-      {showRateModal && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-          backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center'
-        }}>
-          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '10px', width: '300px' }}>
-            <h2>Rate {selectedOrder?.restaurantId?.name}</h2>
-            
-            <label>Rating:</label>
-            <div style={{ margin: '10px 0', fontSize: '1.5rem' }}>
-              {[1, 2, 3, 4, 5].map(star => (
-                <span 
-                  key={star} 
-                  onClick={() => setRating(star)}
-                  style={{ cursor: 'pointer', color: star <= rating ? 'gold' : 'gray' }}
-                >
-                  ★
-                </span>
-              ))}
-            </div>
-
-            <textarea 
-              placeholder="Write a comment..." 
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              style={{ width: '100%', height: '80px', margin: '10px 0' }}
-            />
-
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <button onClick={() => setShowRateModal(false)} style={{ backgroundColor: '#ccc' }}>Cancel</button>
-              <button onClick={submitReview} style={{ backgroundColor: 'green', color: 'white' }}>Submit</button>
-            </div>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }

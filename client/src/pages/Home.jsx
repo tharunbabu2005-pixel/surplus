@@ -5,14 +5,13 @@ import { useNavigate } from 'react-router-dom';
 function Home() {
   const [listings, setListings] = useState([]);
   const [filteredListings, setFilteredListings] = useState([]);
-  const [favorites, setFavorites] = useState([]); // Stores list of liked item IDs
+  const [favorites, setFavorites] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const navigate = useNavigate();
 
   const studentId = localStorage.getItem('userId');
 
-  // Fetch items AND favorites when page loads
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -22,7 +21,6 @@ function Home() {
 
         if (studentId) {
           const resFavs = await axios.get(`http://localhost:5000/api/favorites/${studentId}`);
-          // Extract just the listing IDs to make checking easier
           const favIds = resFavs.data.map(f => f.listingId._id);
           setFavorites(favIds);
         }
@@ -33,7 +31,6 @@ function Home() {
     fetchData();
   }, [studentId]);
 
-  // --- FILTERING LOGIC ---
   useEffect(() => {
     let result = listings;
     if (selectedCategory !== 'all') {
@@ -50,44 +47,17 @@ function Home() {
     navigate('/payment', { state: { item } });
   };
 
-  // --- NOTIFICATION SYSTEM ---
-  useEffect(() => {
-    const checkNotifications = async () => {
-      if (!studentId) return;
-      try {
-        // Get my favorites
-        const res = await axios.get(`http://localhost:5000/api/favorites/${studentId}`);
-        const myFavs = res.data;
-
-        // Check if any favorite has low stock (less than 3)
-        myFavs.forEach(fav => {
-            if (fav.listingId && fav.listingId.quantity > 0 && fav.listingId.quantity < 3) {
-                alert(`Hurry! Your favorite item "${fav.listingId.title}" is running low on stock! (${fav.listingId.quantity} left)`);
-            }
-        });
-      } catch (err) {
-        console.error("Notification check failed");
-      }
-    };
-    
-    // Run this check once when the home page loads
-    checkNotifications();
-  }, [studentId]);
-
-  // --- NEW: HANDLE FAVORITE TOGGLE ---
   const handleToggleFavorite = async (item) => {
     if (!studentId) return alert("Please login to like items!");
-
     try {
       const res = await axios.post('http://localhost:5000/api/favorites/toggle', {
         studentId,
         listingId: item._id
       });
-
       if (res.data.status === 'added') {
-        setFavorites([...favorites, item._id]); // Add heart to UI
+        setFavorites([...favorites, item._id]);
       } else {
-        setFavorites(favorites.filter(id => id !== item._id)); // Remove heart from UI
+        setFavorites(favorites.filter(id => id !== item._id));
       }
     } catch (err) {
       console.error("Error toggling favorite", err);
@@ -101,10 +71,8 @@ function Home() {
 
   return (
     <div style={{ padding: '20px' }}>
-      
-      {/* Header Section */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h1 style={{ margin: 0, fontSize: '2rem' }}>Campus Marketplace 🛒</h1>
+        <h1 style={{ margin: 0, fontSize: '2rem' }}>Food and Essentials Hub 🛒</h1>
         <div>
            <button onClick={() => navigate('/my-favorites')} style={{ marginRight: '10px', backgroundColor: '#e91e63' }}>Favorites ❤️</button>
            <button onClick={() => navigate('/my-orders')} style={{ marginRight: '10px', backgroundColor: 'orange' }}>Orders</button>
@@ -112,7 +80,6 @@ function Home() {
         </div>
       </div>
 
-      {/* --- SEARCH BAR --- */}
       <div style={{ marginBottom: '20px', textAlign: 'center' }}>
         <input 
           type="text" 
@@ -123,7 +90,6 @@ function Home() {
         />
       </div>
 
-      {/* --- CATEGORY TABS --- */}
       <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginBottom: '30px' }}>
         {['all', 'food', 'electronics', 'clothing', 'other'].map((cat) => (
           <button 
@@ -145,7 +111,6 @@ function Home() {
         ))}
       </div>
 
-      {/* Item Grid */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '25px', justifyContent: 'center' }}>
         {filteredListings.length === 0 ? (
           <p style={{ fontSize: '18px', color: 'gray' }}>No items found.</p>
@@ -156,7 +121,6 @@ function Home() {
               backgroundColor: 'white', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
               position: 'relative'
             }}>
-              {/* HEART ICON */}
               <button 
                 onClick={() => handleToggleFavorite(item)}
                 style={{ 
@@ -169,7 +133,6 @@ function Home() {
                 {favorites.includes(item._id) ? '❤️' : '🤍'}
               </button>
 
-              {/* Category Badge */}
               <span style={{ 
                 position: 'absolute', top: '15px', left: '15px', 
                 backgroundColor: '#e0f2f1', color: '#00695c', 
@@ -180,14 +143,14 @@ function Home() {
 
               <h3 style={{ fontSize: '1.4rem', marginBottom: '10px', marginTop: '30px' }}>{item.title}</h3>
               
+              {/* --- CHANGED DOLLAR TO RUPEE HERE --- */}
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', margin: '10px 0' }}>
-                 <span style={{ textDecoration: 'line-through', color: 'gray' }}>${item.originalPrice}</span>
-                 <span style={{ color: 'green', fontWeight: 'bold', fontSize: '1.2rem' }}>${item.discountedPrice}</span>
+                 <span style={{ textDecoration: 'line-through', color: 'gray' }}>₹{item.originalPrice}</span>
+                 <span style={{ color: 'green', fontWeight: 'bold', fontSize: '1.2rem' }}>₹{item.discountedPrice}</span>
               </div>
               
               <p style={{ color: '#666', fontSize: '0.9rem' }}>📍 Pickup: {item.pickupTime}</p>
               
-              {/* --- NEW: DISPLAY SHOP ADDRESS --- */}
               <p style={{ color: '#555', fontSize: '0.85rem', marginTop: '-5px' }}>
                  🏠 <strong>Location:</strong> {item.restaurantId?.address || "Address not listed"}
               </p>

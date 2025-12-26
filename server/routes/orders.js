@@ -1,87 +1,76 @@
-// FILE: server/routes/orders.js
-const express = require('express');
-const router = express.Router();
+const router = require('express').Router();
 const Order = require('../models/Order');
 const Listing = require('../models/Listing');
 
-// 1. PLACE ORDER (You already have this working)
-// 1. PLACE ORDER
+// 1. PLACE ORDER (Student buys item)
 router.post('/place', async (req, res) => {
   try {
-    const { studentId, listingId, restaurantId, price, itemTitle } = req.body; // <--- Expect itemTitle
+    const { studentId, listingId, restaurantId, price, itemTitle } = req.body;
 
+    // Create the order with the saved name (Snapshot)
     const newOrder = new Order({
       studentId,
       listingId,
       restaurantId,
       totalPrice: price,
-      itemTitle: itemTitle, // <--- Save it!
+      itemTitle: itemTitle || "Unnamed Item", // Fallback if name is missing
       status: 'ordered'
     });
 
     await newOrder.save();
 
-    // Decrease quantity in the Listing
-    // We use findByIdAndUpdate just to be safe if listing exists
-    const Listing = require('../models/Listing');
+    // Decrease the stock quantity
     const listing = await Listing.findById(listingId);
     if (listing) {
-        listing.quantity = Math.max(0, listing.quantity - 1);
-        await listing.save();
+      listing.quantity = Math.max(0, listing.quantity - 1);
+      await listing.save();
     }
 
     res.status(201).json(newOrder);
   } catch (err) {
+    console.error("Place Order Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// 2. GET ORDERS (THIS IS THE FIX)
-// This route fetches orders and "populates" the details
-router.get('/user/:userId', async (req, res) => {
+// 2. GET STUDENT ORDERS (For MyOrders Page)
+router.get('/student/:id', async (req, res) => {
   try {
-    const orders = await Order.find({ studentId: req.params.userId })
-      .populate('listingId')      // Converts listingId -> Full Food Details
-      .populate('restaurantId');  // Converts restaurantId -> Full Restaurant Details
-      
+    const orders = await Order.find({ studentId: req.params.id })
+      .populate('listingId')     // Get details of the item (if it still exists)
+      .populate('restaurantId')  // Get details of the shop
+      .sort({ createdAt: -1 });  // Show newest first
+
     res.json(orders);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 3. GET RESTAURANT ORDERS (Sales History)
-router.get('/restaurant/:restaurantId', async (req, res) => {
+// 3. GET RESTAURANT ORDERS (For Incoming Orders Page)
+router.get('/restaurant/:id', async (req, res) => {
   try {
-    const orders = await Order.find({ restaurantId: req.params.restaurantId })
-      .populate('listingId')      // Get the Food Name
-      .populate('studentId', 'name email'); // Get the Student's Name & Email (Important for pickup!)
-      
+    const orders = await Order.find({ restaurantId: req.params.id })
+      .populate('studentId', 'name email') // Get student name
+      .populate('listingId')
+      .sort({ createdAt: -1 });
+
     res.json(orders);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 3. GET RESTAURANT ORDERS (Sales History)
-router.get('/restaurant/:restaurantId', async (req, res) => {
+// 4. UPDATE ORDER STATUS (For Restaurant to click "Picked Up")
+router.put('/update-status', async (req, res) => {
   try {
-    const orders = await Order.find({ restaurantId: req.params.restaurantId })
-      .populate('listingId')      // Get the Food Name
-      .populate('studentId', 'name email'); // Get the Student's Name & Email
-      
-    res.json(orders);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 4. UPDATE ORDER STATUS (Mark as Picked Up)
-router.put('/status/:orderId', async (req, res) => {
-  try {
-    const { status } = req.body;
-    await Order.findByIdAndUpdate(req.params.orderId, { status });
-    res.json({ message: "Status updated successfully" });
+    const { orderId, status } = req.body;
+    const updatedOrder = await Order.findByIdAndUpdate(
+      orderId, 
+      { status }, 
+      { new: true }
+    );
+    res.json(updatedOrder);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

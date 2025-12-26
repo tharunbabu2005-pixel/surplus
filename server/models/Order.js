@@ -2,10 +2,10 @@ const mongoose = require('mongoose');
 
 const OrderSchema = new mongoose.Schema({
   studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  listingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Listing' }, // Link to item
+  listingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Listing' },
   restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   
-  // NEW: We save the name here so we never lose it
+  // THIS IS THE MISSING PART THAT FIXES IT:
   itemTitle: { type: String, required: true }, 
   
   totalPrice: { type: Number, required: true },

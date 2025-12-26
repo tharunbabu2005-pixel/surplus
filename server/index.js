@@ -19,7 +19,7 @@ app.use(express.json());
 app.use('/api/favorites', favoriteRoutes);
 
 // Database Connection
-mongoose.connect('mongodb://localhost:27017/foodSurplus')
+mongoose.connect('mongodb://localhost:27017/foodhub')
   .then(() => console.log("MongoDB Connected"))
   .catch(err => console.log("DB Error:", err));
 

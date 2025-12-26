@@ -5,10 +5,9 @@ import { useNavigate } from 'react-router-dom';
 function Dashboard() {
   const navigate = useNavigate();
   
-  // Added 'category' to the form state
   const [formData, setFormData] = useState({
     title: '',
-    category: 'food', // Default to food
+    category: 'food',
     originalPrice: '',
     discountedPrice: '',
     quantity: '',
@@ -25,7 +24,7 @@ function Dashboard() {
     try {
       const userId = localStorage.getItem('userId');
       const res = await axios.get('http://localhost:5000/api/listings/all');
-      const myItems = res.data.filter(item => item.restaurantId === userId);
+      const myItems = res.data.filter(item => item.restaurantId === userId || (item.restaurantId && item.restaurantId._id === userId));
       setMyListings(myItems);
     } catch (err) {
       console.error("Error loading listings", err);
@@ -46,7 +45,6 @@ function Dashboard() {
       });
 
       alert('Item Added Successfully!');
-      // Reset form
       setFormData({ 
         title: '', 
         category: 'food', 
@@ -74,7 +72,6 @@ function Dashboard() {
   const handleRemoveStock = async (item) => {
     const countStr = prompt(`Current stock is ${item.quantity}. How many to remove?`);
     if (!countStr) return; 
-
     const count = parseInt(countStr);
     if (isNaN(count) || count <= 0) return alert("Invalid number");
 
@@ -105,16 +102,12 @@ function Dashboard() {
           >
             Incoming Orders
           </button>
-
-          {/* --- NEW BUTTON ADDED HERE --- */}
           <button 
             onClick={() => navigate('/analytics')} 
             style={{ marginRight: '10px', backgroundColor: '#9c27b0', color: 'white' }}
           >
             Stats & Reviews
           </button>
-          {/* --------------------------- */}
-
           <button onClick={handleLogout} style={{ backgroundColor: '#333' }}>Logout</button>
         </div>
       </div>
@@ -126,8 +119,6 @@ function Dashboard() {
           
           <div style={{ display: 'flex', gap: '10px' }}>
             <input name="title" placeholder="Item Name (e.g. Headphones)" value={formData.title} onChange={handleChange} required style={{ flex: 2 }} />
-            
-            {/* NEW CATEGORY DROPDOWN */}
             <select name="category" value={formData.category} onChange={handleChange} style={{ flex: 1, padding: '10px', border: '1px solid #ddd', borderRadius: '5px' }}>
                 <option value="food">Food 🍔</option>
                 <option value="electronics">Electronics 📱</option>
@@ -166,13 +157,13 @@ function Dashboard() {
             }}>
               <div>
                 <strong style={{ fontSize: '1.2em' }}>{item.title}</strong>
-                {/* SHOW CATEGORY TAG */}
                 <span style={{ marginLeft: '10px', fontSize: '0.8em', backgroundColor: '#e0f2f1', padding: '2px 8px', borderRadius: '4px', color: '#00695c' }}>
                     {item.category?.toUpperCase() || 'FOOD'}
                 </span>
 
+                {/* --- CHANGED DOLLAR TO RUPEE HERE --- */}
                 <div style={{ fontSize: '0.9em', color: 'gray', marginTop: '5px' }}>
-                   Stock: <span style={{ color: 'black', fontWeight: 'bold' }}>{item.quantity}</span> • ${item.discountedPrice}
+                   Stock: <span style={{ color: 'black', fontWeight: 'bold' }}>{item.quantity}</span> • ₹{item.discountedPrice}
                 </div>
               </div>
               
@@ -183,7 +174,6 @@ function Dashboard() {
                 >
                   - Qty
                 </button>
-
                 <button 
                   onClick={() => handleDelete(item._id)}
                   style={{ backgroundColor: '#ff4444', color: 'white', padding: '8px 12px', fontSize: '0.85em' }}
